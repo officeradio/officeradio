@@ -2,31 +2,43 @@
   <head>
     <script src='https://cdn.firebase.com/v0/firebase.js'></script>
     <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js'></script>
-  </head>
-  <body>
-  	<div id='roomDiv'>
-  		<input type='text' id='nameInput' placeholder='Name'>
-  		<input type='text' id='roomInput' placeholder='Room'>
-  	</div>
-  	<div id='clientDiv'>
-	  	<div id='queueDiv'>
-	  		<div id='queueContainer'>
-		    	<div id='tracksDiv'></div>
-		   	</div>
-	    	<input type='text' id='trackInput' placeholder='URL here'>
-	  	</div>
-	  	<div id='chatDiv'>
-		  	<div id='messageContainer'>
-		    	<div id='messagesDiv'></div>
-		   	</div>
-	    	<input type='text' id='messageInput' placeholder='Message'>
-		</div>
-	    <div id='usersDiv'></div>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,800' rel='stylesheet' type='text/css' />
+    <link href="noise.css" rel="stylesheet" type="text/css" />
+    <link href="stylish.css" rel="stylesheet" type="text/css" />
 
-	    <br><br>
-	    <div id='playerDiv'>
-	    	
-	    </div>
+  </head>
+  <body class="noise">
+  	<div id='container' class="shadow rounded">
+	  	<div id='roomDiv'>
+	  		<h1>Hello</h1>
+	  		<h3>What's your name and where do you want to go?</h3>
+	  		<input type='text' id='nameInput' placeholder='Name'>
+	  		<input type='text' id='roomInput' placeholder='Room'>
+	  	</div>
+	  	<div id='clientDiv'>
+	  		<div id='container3'>
+	  		<div id='container2'>
+	  		<div id='container1'>
+			  	<div id='queueDiv'>
+			  		<div id='playerDiv'>
+			    	
+			    	</div>
+			  		<div id='queueContainer'>
+				    	<div id='tracksDiv'></div>
+				   	</div>
+			    	<input type='text' id='trackInput' placeholder='URL here'>
+			  	</div>
+			  	<div id='chatDiv'>
+				  	<div id='messageContainer'>
+				    	<div id='messagesDiv'></div>
+				   	</div>
+			    	<input type='text' id='messageInput' placeholder='Message'>
+				</div>
+			    <div id='usersDiv'></div>
+			</div>
+			</div>
+			</div>
+		</div>
 	</div>
     
 
@@ -66,6 +78,7 @@
     	var track = new Firebase('https://officeradio.firebaseio.com/'+room+'/track/');
     	var coord = new Firebase('https://officeradio.firebaseio.com/'+room+'/coordinator/');
     	var play = new Firebase('https://officeradio.firebaseio.com/'+room+'/play/');
+    	var history = new Firebase('https://officeradio.firebaseio.com/'+room+'/history/');
 
     	setupChat( chat, name );
     	setupUsers( users );
@@ -87,7 +100,7 @@
 			{
 				if (snapshot.val() == user.toString())
 				{
-					setupCoordinator( user, coord, play, track );
+					setupCoordinator( user, coord, play, track, history, queue );
 				}
 				var name;
 				new Firebase(snapshot.val()).once('value', function(v){ name = v.val().name; });
@@ -146,7 +159,7 @@
 
     function loadYoutube( ytid, start )
     {
-    	var html = '<object width="425" height="355"><param name="movie" value="http://www.youtube.com/v/'+ytid+'&iv_load_policy=3&autoplay=1&showinfo=0&volume=100&start='+start+'"></param><param name="allowscriptaccess" value="always"></param><param name="volume" value="100"></param><param name="wmode" value="transparent"></param></param><embed src="http://www.youtube.com/v/'+ytid+'&iv_load_policy=3&autoplay=1&showinfo=0&volume=100&start='+start+'" type="application/x-shockwave-flash" allowscriptaccess="always" wmode="transparent" width="425" height="355" volume="100"></embed></object>'
+    	var html = '<object width="100%"><param name="movie" value="http://www.youtube.com/v/'+ytid+'&iv_load_policy=3&autoplay=1&showinfo=0&volume=100&start='+start+'"></param><param name="allowscriptaccess" value="always"></param><param name="volume" value="100"></param><param name="wmode" value="transparent"></param></param><embed src="http://www.youtube.com/v/'+ytid+'&iv_load_policy=3&autoplay=1&showinfo=0&volume=100&start='+start+'" type="application/x-shockwave-flash" allowscriptaccess="always" wmode="transparent" volume="100"></embed></object>'
     	$('#playerDiv').html(html);
 
     	isPlaying = true;
@@ -154,7 +167,7 @@
     	if (isCoordinator) currentCoordDuration = start;
     }
 
-    function setupCoordinator( user, coord, play, track )
+    function setupCoordinator( user, coord, play, track, history, queue )
     {
     	// when I'm quitting, stop me being coordinator
     	isCoordinator = true;
@@ -167,11 +180,20 @@
 
 				if (currentCoordDuration >= currentTrackDuration && currentTrack != null)
 				{
+					new Firebase(currentTrack).once('value', function(v){history.push(v.val())});
 					new Firebase(currentTrack).remove();
 					track.set(null);
 				}
 			}
     	},1000)
+
+    	if (currentTrack == null)
+    	{
+    		queue.startAt().limit(1).once("child_added", function(snapshot) {
+						play.set(0);
+					    track.set(snapshot.ref().toString());
+					  });
+    	}
     }
 
     function ytGetID( url )
