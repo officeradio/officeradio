@@ -34,6 +34,9 @@
 			  		<div id='playerDiv'>
 			    	
 			    	</div>
+			    	<div>
+			    		<a href="#" id='skipit'>Skip it!</a>
+			    	</div>
 			  		<div id='queueContainer'>
 				    	<div id='tracksDiv'></div>
 				   	</div>
@@ -92,6 +95,7 @@
     ];
 
     $('#header h2').text(phrases[Math.floor((Math.random()*phrases.length))]);
+    $('#skipit').hide();
 
     var roomList = {};
 
@@ -219,6 +223,10 @@
 				{
 					loadSoundcloud( trackData.url, playStart );
 				}
+				if (isCoordinator)
+				{
+					$('#skipit').show(1000);
+				}
 			}
 			else
 			{
@@ -230,6 +238,7 @@
 						play.set(0);
 					    track.set(snapshot.ref().toString());
 					  });
+					$('#skipit').hide(1000);
 				}
 			}
 		});
@@ -248,6 +257,14 @@
     {
     	$('#playerDiv').html('');
     	isPlaying = false;
+    }
+
+    function skipTrack(track, queue)
+    {
+    	queue.startAt().limit(1).once("child_added", function(snapshot) {
+						snapshot.ref().remove();
+					  });
+    	track.set(null);
     }
 
     function loadSoundcloud( scUrl, start )
@@ -296,6 +313,11 @@
 				}
 			}
     	},1000)
+
+    	$('#skipit').click(function(){
+    		skipTrack(track, queue);
+    	});
+
 
     	coord.onDisconnect().set(null);
 
