@@ -2,6 +2,7 @@
   <head>
     <script src='https://cdn.firebase.com/v0/firebase.js'></script>
     <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js'></script>
+    <script src='https://connect.soundcloud.com/sdk.js'></script>
     <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,800' rel='stylesheet' type='text/css' />
     <link href="noise.css" rel="stylesheet" type="text/css" />
     <link href="stylish.css" rel="stylesheet" type="text/css" />
@@ -9,17 +10,27 @@
   </head>
   <body class="noise">
   	<div id='container' class="shadow rounded">
+  		<div id='header'>
+	  		<h1>Office Radio</h1>
+	  		<h2 />
+	  	</div>
 	  	<div id='roomDiv'>
-	  		<h1>Hello</h1>
-	  		<h3>What's your name and where do you want to go?</h3>
+	  		<div>
+	  			<h3>Hello. What's your name and where do you want to go?</h3>
+	  		</div>
 	  		<input type='text' id='nameInput' placeholder='Name'>
+	  		<div id='roomsDiv'>
+
+	  		</div>
+	  		Or create a room:
 	  		<input type='text' id='roomInput' placeholder='Room'>
+	  		<input type='button' id='roomGo' value='Go!'>
 	  	</div>
 	  	<div id='clientDiv'>
 	  		<div id='container3'>
 	  		<div id='container2'>
 	  		<div id='container1'>
-			  	<div id='queueDiv'>
+				<div id='queueDiv' class="scroll">
 			  		<div id='playerDiv'>
 			    	
 			    	</div>
@@ -29,12 +40,13 @@
 			    	<input type='text' id='trackInput' placeholder='URL here'>
 			  	</div>
 			  	<div id='chatDiv'>
-				  	<div id='messageContainer'>
+				  	<div id='messageContainer' class="scroll">
 				    	<div id='messagesDiv'></div>
 				   	</div>
 			    	<input type='text' id='messageInput' placeholder='Message'>
+			    	<input type='button' id='messageGo' value='Send'>
 				</div>
-			    <div id='usersDiv'></div>
+			    <div id='usersDiv' class="scroll"></div>
 			</div>
 			</div>
 			</div>
@@ -43,6 +55,12 @@
     
 
     <script>
+
+    
+    if (localStorage)
+    {
+    	$('#nameInput').val(localStorage.getItem("name"));
+    }
 
 	$('#clientDiv').hide();
     $('#roomInput').keypress(function (e) {
@@ -56,6 +74,52 @@
         }
     });
 
+    var soundcloudClientID = '3489a2aa1dae8b123748017854c09602';
+
+    SC.initialize({
+	  client_id: soundcloudClientID
+	});
+
+    var phrases = 
+    [ 
+    	"Crikey, that's clever!", 
+    	"Rickroll a whole office at once", 
+    	"Shouldn't you be working?", 
+    	"Random phrases is so last year", 
+    	"Searching YouTube at work since 2013", 
+    	"Obligatory 212 required",
+    	"Not responsible for varying audio levels"  
+    ];
+
+    $('#header h2').text(phrases[Math.floor((Math.random()*phrases.length))]);
+
+    var roomList = {};
+
+    var rooms = new Firebase('https://officeradio.firebaseio.com/');
+
+    rooms.on('child_added', function(snapshot) {
+        var room = snapshot.name();
+
+    	var div = $('<div/>').addClass('room');
+
+    	$('<a/>').attr("href", "#").text(room).click(function(){
+    		var name = $('#nameInput').val();
+    		validateThenJoin(room, name);
+    	}).appendTo(div);
+
+    	div.appendTo( $('#roomsDiv') );
+
+
+		roomList[room] = div;
+    });
+
+    rooms.on('child_removed', function(snapshot) {
+        var room = snapshot.name();
+
+    	roomList[room].remove();
+    	roomList[room] = null;
+    });
+
     var userList = {};
     var trackQueue = {};
 
@@ -66,10 +130,29 @@
     var currentPlayTime = 0;
     var isPlaying = false;
 
+    var myUser = null;
+
     var currentCoordDuration = 0;
+
+    function validateThenJoin( room, name )
+    {
+    	if (room == '')
+    	{
+    		alert( 'pick a room or create one!' );
+    	}
+    	else if (name == '')
+    	{
+    		alert(' you need to choose your name!');
+    	}
+    	else joinRoom( room, name );
+    }
 
     function joinRoom( room, name )
     {
+    	if (localStorage)
+    	{
+    		localStorage.setItem("name", name);
+    	}
     	$('#roomDiv').hide(1000);
     	$('#clientDiv').show(1000);
     	var users = new Firebase('https://officeradio.firebaseio.com/'+room+'/users/');
@@ -80,18 +163,9 @@
     	var play = new Firebase('https://officeradio.firebaseio.com/'+room+'/play/');
     	var history = new Firebase('https://officeradio.firebaseio.com/'+room+'/history/');
 
-    	setupChat( chat, name );
-    	setupUsers( users );
-    	setupQueueMaintenance( queue );
+    	var user = users.push({name: name});
 
-		chat.push({name: name, join : true});
-		var user = users.push({name: name});
-
-		var playUpdate = play.on('value', function(snapshot){
-			currentPlayTime = snapshot.val();
-		})
-
-		var coordUpdate = coord.on('value', function(snapshot) {
+    	var coordUpdate = coord.on('value', function(snapshot) {
 			if (snapshot.val() == null)
 			{
 				coord.transaction(function(){coord.set(user.toString());});
@@ -108,6 +182,20 @@
 				if (userList[name] != null) userList[name].addClass('coordinator');
 			}
 			
+		});
+
+    	setupChat( chat, name );
+    	setupUsers( users );
+    	setupQueueMaintenance( queue );
+    	setupNecromancer( queue, history );
+
+    	myUser = name;
+
+		chat.push({name: name, join : true});
+		
+
+		var playUpdate = play.on('value', function(snapshot){
+			currentPlayTime = snapshot.val();
 		})
 
 		track.on('value', function(snapshot) {
@@ -121,11 +209,16 @@
 
 				var playStart = currentPlayTime;
 
-				currentTrackDuration = trackData.youtube.duration;
+				currentTrackDuration = trackData.duration;
 
-				if (playStart != 0) playStart += 1; // compensate for starting up the video player
-
-				loadYoutube( trackData.youtube.ytid, playStart );
+				if (trackData.youtube)
+				{
+					loadYoutube( trackData.youtube.ytid, playStart );
+				}
+				else if (trackData.soundcloud)
+				{
+					loadSoundcloud( trackData.url, playStart );
+				}
 			}
 			else
 			{
@@ -157,6 +250,23 @@
     	isPlaying = false;
     }
 
+    function loadSoundcloud( scUrl, start )
+    {
+    	if (start > 5)
+    	{
+    		alert('SoundCloud might be out of sync! it\'ll fix itself if you stick around.' );
+    	}
+    	var track_url = 'http://soundcloud.com/forss/flickermood';
+		SC.oEmbed(scUrl, { auto_play: true }, function(oEmbed) {
+			//alert('oEmbed');
+		  $('#playerDiv').html(oEmbed.html);
+		});
+
+		isPlaying = true;
+
+    	if (isCoordinator) currentCoordDuration = start;
+    }
+
     function loadYoutube( ytid, start )
     {
     	var html = '<object width="100%"><param name="movie" value="http://www.youtube.com/v/'+ytid+'&iv_load_policy=3&autoplay=1&showinfo=0&volume=100&start='+start+'"></param><param name="allowscriptaccess" value="always"></param><param name="volume" value="100"></param><param name="wmode" value="transparent"></param></param><embed src="http://www.youtube.com/v/'+ytid+'&iv_load_policy=3&autoplay=1&showinfo=0&volume=100&start='+start+'" type="application/x-shockwave-flash" allowscriptaccess="always" wmode="transparent" volume="100"></embed></object>'
@@ -173,7 +283,7 @@
     	isCoordinator = true;
 
     	var tick = setInterval(function(){
-			if (isPlaying)
+			if (isPlaying && isCoordinator)
 			{
 				currentCoordDuration++;
 				play.set( currentCoordDuration );
@@ -187,13 +297,8 @@
 			}
     	},1000)
 
-    	if (currentTrack == null)
-    	{
-    		queue.startAt().limit(1).once("child_added", function(snapshot) {
-						play.set(0);
-					    track.set(snapshot.ref().toString());
-					  });
-    	}
+    	coord.onDisconnect().set(null);
+
     }
 
     function ytGetID( url )
@@ -212,21 +317,82 @@
     	var video_id = ytGetID( ytUrl );
 
     	   	$.getJSON('http://gdata.youtube.com/feeds/api/videos/'+video_id+'?v=2&alt=jsonc',function(data,status,xhr){
-		    var data =  {
-		    		url : ytUrl,
-		    		youtube : 
+    	   		if (data.data.accessControl.embed != 'allowed' || data.data.accessControl.syndicate != 'allowed')
+    	   		{
+    	   			alert('this video can\'t be embedded, sorry!');
+    	   		}
+    	   		else
+    	   		{
+			    	var ytData =  {
+			    		url : ytUrl,
+			    		title : data.data.title,
+			    		thumb : data.data.thumbnail.hqDefault,
+			    		duration : data.data.duration,
+			    		author : data.data.uploader,
+			    		submittedby : myUser,
+			    		youtube : 
+			    		{
+			    			ytid : video_id,
+			    			player : data.data.player.default,
+			    		}
+			    	};
+
+			    	queue.push(ytData);
+			    }
+		    });
+		
+    }
+
+    function scPushTrack( scUrl, queue )
+    {
+    	$.getJSON('http://api.soundcloud.com/resolve.json?url='+scUrl+'&client_id='+soundcloudClientID, function(data,status,xhr){
+    	   		var scData =  {
+		    		url : scUrl,
+		    		title : data.title,
+		    		thumb : data.artwork_url,
+		    		duration : Math.floor(data.duration / 1000),
+		    		author : data.user.username,
+		    		submittedby : myUser,
+		    		soundcloud : 
 		    		{
-		    			ytid : video_id,
-		    		 	title : data.data.title,
-		    			thumb : data.data.thumbnail.hqDefault,
-		    			player : data.data.player.default,
-		    			duration : data.data.duration
+		    			scid : data.id,
 		    		}
 		    	};
 
-		    	queue.push(data);
+		    	queue.push(scData);
 		    });
-		
+    }
+
+    function setupNecromancer( queue, history )
+    {
+    	// revive old track if nothing's in the list
+    	queue.on('value', function(snapshot) {
+	    		if (isCoordinator && !snapshot.hasChildren())
+	    		{
+	    			history.once('value', function(histList)
+	    			{
+	    				var numHistoryItems = histList.numChildren();
+
+						if (numHistoryItems > 10)
+						{
+		    				var randomItem = Math.floor((Math.random()*numHistoryItems));
+
+		    				var count = 0;
+
+		    				histList.forEach(function(child)
+		    				{
+		    					if (count == randomItem)
+		    					{
+		    						queue.push(child.val());
+		    					}
+
+		    					count++;
+		    				});
+	    				}
+	    			});
+	    		}
+	    });
+
     }
 
     function setupQueueMaintenance( queue )
@@ -236,7 +402,20 @@
 	        if (e.keyCode == 13) {
 	          var text = $('#trackInput').val();
 
-	          ytPushTrack( text, queue );
+			if(text.indexOf("youtube") !== -1)
+			{
+				ytPushTrack( text, queue );
+			}
+			else if(text.indexOf("soundcloud") !== -1)
+			{
+				scPushTrack( text, queue );
+			}
+			else
+			{
+				alert('I don\'t recognise that type, sorry!');
+			}
+
+	          
 
 	          $('#trackInput').val('');
 	        }
@@ -246,9 +425,10 @@
 	        var track = snapshot.val();
 	        var uniqueID = snapshot.ref().name();
 
-        	trackQueue[uniqueID] = $('<div/>').addClass('track').text(track.url);
+        	/*trackQueue[uniqueID] = $('<div/>').addClass('track').text(track.url);
 
-    		trackQueue[uniqueID].appendTo($('#tracksDiv'));
+    		trackQueue[uniqueID].appendTo($('#tracksDiv'));*/
+    		addQueueItem(track, uniqueID, queue);
 	    });
 
 	    queue.on('child_removed', function(snapshot) {
@@ -258,6 +438,44 @@
         	trackQueue[uniqueID].remove();
         	trackQueue[uniqueID] = null;
 	    });
+
+    }
+
+    function validateURL(s)
+    {
+    	var prefix = 'http://';
+		if (s.substr(0, prefix.length) !== prefix)
+		{
+		    s = prefix + s;
+		}
+
+		return s;
+    }
+
+    function addQueueItem(track, uniqueID, queue)
+    {
+    	trackQueue[uniqueID] = $('<div/>').addClass('queuedItem').hide();
+	    $('<img/>').addClass('thumb').attr('src', track.thumb).appendTo(trackQueue[uniqueID]);
+
+	    var itemTextContainer = $('<div/>').addClass('itemText').appendTo(trackQueue[uniqueID]);
+
+	    $('<a/>').attr('href', validateURL(track.url)).text(track.title).appendTo($('<div/>').addClass('title').appendTo(itemTextContainer));
+	    
+	    $('<div/>').addClass('author').text(track.author).appendTo(itemTextContainer);
+	    var submit = $('<div/>').addClass('submittedby').text('submitted by '+track.submittedby+' ').appendTo(itemTextContainer);
+
+	    if (isCoordinator)
+	    {
+	    	$('<a/>').attr('href', '#').click( function(){
+	    		// remove item
+    			queue.child(uniqueID).remove();
+
+	    	}).text('Remove').appendTo(submit);
+	    }
+
+	    trackQueue[uniqueID].appendTo($('#tracksDiv'));
+	    trackQueue[uniqueID].show(500);
+
 
     }
 
@@ -287,21 +505,23 @@
     {
 	 	$('#messageInput').keypress(function (e) {
 	        if (e.keyCode == 13) {
-	          var text = $('#messageInput').val();
-	          chat.push({name: name, text: text});
-	          $('#messageInput').val('');
+	          validateAndSendMessage(chat, name);
 	        }
 	      });
 
-	      chat.on('child_added', function(snapshot) {
+	 	$('#messageGo').click(function (e) {
+	        validateAndSendMessage(chat, name);
+	      });
+
+	      chat.endAt().limit(1).on('child_added', function(snapshot) {
 	        var message = snapshot.val();
 	        if (message.join)
 	        {
-				displayChatMessage(message.name, 'joins', 'join');
+				displayChatMessage(message.name, 'joins', 'join msg');
 			}
 			else if (message.leave)
 			{
-				displayChatMessage(message.name, 'leaves', 'leave');
+				displayChatMessage(message.name, 'leaves', 'leave msg');
 			}
 			else 
 			{
@@ -311,9 +531,20 @@
 	      
     }
 
+    function validateAndSendMessage(chat, name)
+    {
+    	var text = $('#messageInput').val();
+    	if (text != '')
+    	{
+	        chat.push({name: name, text: text});
+			$('#messageInput').val('');
+	    }
+    }
+
     function displayChatMessage(name, text, cssClass) {
-        $('<div/>').addClass(cssClass).text(text).prepend($('<em/>').text(name+': ')).appendTo($('#messagesDiv'));
-        $('#messagesDiv')[0].scrollTop = $('#messagesDiv')[0].scrollHeight;
+    	var messageDiv = $('#messagesDiv')[0];
+        $('<div/>').addClass(cssClass).text(text).prepend($('<span/>').text(name+' ')).appendTo(messageDiv);
+        $('#messageContainer').animate({scrollTop:$('#messageContainer')[0].scrollHeight},'slow');
 	}
       /*var myDataRef = new Firebase('https://rj8mzygh5ob.firebaseio-demo.com/');
       $('#messageInput').keypress(function (e) {

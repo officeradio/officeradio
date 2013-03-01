@@ -19,8 +19,18 @@ body
 
 h1
 {
-	text-transform: uppercase
+	text-transform: uppercase;
 	font-family: 'Open Sans', sans-serif;
+	font-size: 4em;
+	text-align: center;
+	margin-bottom: 0;
+}
+
+h2
+{
+	font-family: 'Open Sans', sans-serif;
+	font-weight: normal;
+	text-align: center;
 }
 
 h3
@@ -29,13 +39,21 @@ h3
 	font-family: 'Open Sans', sans-serif;
 }
 
+#header
+{
+	background-color: #fafafa;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #eee;
+}
+
 #container
 {
 	background-color: #fafafa;
-	padding: 10px;
+	padding: 0px;
 	width: 800px;
 	margin-left:auto;
 	margin-right:auto;
+	border: 1px solid #eee;
 }
 
 #clientDiv {
@@ -45,8 +63,11 @@ h3
 #container3 {
     float:left;
     width:100%;
+    height: 98%;
     overflow:hidden;
     position:relative;
+    background-color: #fff;
+    border-bottom: 1px solid #eee;
 }
 #container2 {
     float:left;
@@ -62,28 +83,140 @@ h3
 }
 #queueDiv {
     float:left;
-    width:26%;
+    width: 35%;
     position:relative;
     left:72%;
-    overflow:hidden;
+    background-color: #fff;
 }
 #chatDiv {
     float:left;
-    width:36%;
+    width: 45%;
     position:relative;
-    left:76%;
-    height: 100%;
-    overflow:scroll;
+    left: 75%;
+    background-color: #fff;
+    border-left: 1px solid #eee;
+    border-right: 1px solid #eee;
+    
 }
 #usersDiv {
     float:left;
-    width:26%;
+    width: 15%;
     position:relative;
-    left:80%;
-    overflow:hidden;
+    left: 76%;
+    background-color: #fff;
+}
+
+#messageContainer
+{
+	height: 95%;
+}
+
+.scroll {
+   overflow-y:auto;
+   overflow-x: hidden;
+}
+.scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.scroll::-webkit-scrollbar-track { 
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+    border-radius: 8px; 
+    background-color: #eee;
 }
 
 #playerdiv object
 {
 	width: 100%;
 }
+
+.room:nth-child(even) {
+    background-color: #eee;
+}
+
+#roomsDiv
+{
+	width: 400px;
+	margin-left: auto;
+	margin-right: auto;
+	border: 1px solid #eee;
+}
+
+a
+{
+	font-weight: bold;
+	text-decoration: none;
+	color : #000;
+}
+
+.join
+{
+	color: #0d0;
+}
+
+.leave
+{
+	color: #d00;
+}
+
+.msg span
+{
+	font-weight: bold;
+}
+
+.msg:nth-child(even) {
+    background-color: #efefef;
+}
+.msg:nth-child(odd) {
+    background-color: #fafafa;
+}
+
+#messageInput
+{
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.queuedItem
+{
+	height: 80px;
+	background-color: #fff;
+	zoom: 0.8;
+	padding-top: 0.3em;
+}
+
+.queuedItem img
+{
+	height: 80px;
+	float: left;
+}
+
+.queuedItem .itemText
+{
+	height: 80px;
+	padding-top: 10px;
+	padding-left: 115px;
+}
+
+.queuedItem .title
+{
+	font-weight: bold;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.author
+{
+	font-size: 0.8em;
+}
+
+.submittedby
+{
+	font-size: 0.8em;
+}
+
+
