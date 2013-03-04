@@ -186,10 +186,13 @@
 					$('.queuedItem .submittedby').remove();
 					isCoordinator = false;
 				}
-				var name;
-				new Firebase(snapshot.val()).once('value', function(v){ name = v.val().name; });
 
-				if (userList[name] != null) userList[name].addClass('coordinator');
+				new Firebase(snapshot.val()).once('value', function(v){ 
+					var name = v.val().name; 
+					if (name != null && userList[name] != null) userList[name].addClass('coordinator');
+				});
+
+				
 			}
 			
 		});
@@ -314,12 +317,12 @@
 				if (currentCoordDuration >= currentTrackDuration && currentTrack != null)
 					new Firebase(currentTrack).once('value', function(v)
 					{
-						justFinishedTrack = v.val();
-						history.once('value', function(v)
+						var justFinishedTrack = v.val();
+						history.once('value', function(h)
 						{
 							var isPresent = false;
 
-							v.forEach(
+							h.forEach(
 								function(child){
 									var c = child.val();
 									if (justFinishedTrack.youtube && c.youtube && justFinishedTrack.youtube.ytid == c.youtube.ytid)
@@ -338,7 +341,7 @@
 							}
 						});
 
-						justFinishedTrack.remove();
+						v.ref().remove();
 						track.set(null);					
 					});
 
