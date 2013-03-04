@@ -30,14 +30,14 @@
 	  		<div id='container3'>
 	  		<div id='container2'>
 	  		<div id='container1'>
-				<div id='queueDiv' class="scroll">
+				<div id='queueDiv'>
 			  		<div id='playerDiv'>
 			    	
 			    	</div>
 			    	<div>
 			    		<a href="#" id='skipit'>Skip it!</a>
 			    	</div>
-			  		<div id='queueContainer'>
+			  		<div id='queueContainer' class="scroll">
 				    	<div id='tracksDiv'></div>
 				   	</div>
 			    	<input type='text' id='trackInput' placeholder='URL here'>
@@ -180,6 +180,12 @@
 				{
 					setupCoordinator( user, coord, play, track, history, queue );
 				}
+				else
+				{
+					$('#skipit').hide(1000);
+					$('.queuedItem .submittedby').remove();
+					isCoordinator = false;
+				}
 				var name;
 				new Firebase(snapshot.val()).once('value', function(v){ name = v.val().name; });
 
@@ -238,7 +244,6 @@
 						play.set(0);
 					    track.set(snapshot.ref().toString());
 					  });
-					$('#skipit').hide(1000);
 				}
 			}
 		});
@@ -299,24 +304,57 @@
     	// when I'm quitting, stop me being coordinator
     	isCoordinator = true;
 
-    	var tick = setInterval(function(){
+    	var tick = setInterval(
+    	function(){
 			if (isPlaying && isCoordinator)
 			{
 				currentCoordDuration++;
 				play.set( currentCoordDuration );
 
 				if (currentCoordDuration >= currentTrackDuration && currentTrack != null)
-				{
-					new Firebase(currentTrack).once('value', function(v){history.push(v.val())});
-					new Firebase(currentTrack).remove();
-					track.set(null);
-				}
+					new Firebase(currentTrack).once('value', function(v)
+					{
+						justFinishedTrack = v.val();
+						history.once('value', function(v)
+						{
+							var isPresent = false;
+
+							v.forEach(
+								function(child){
+									var c = child.val();
+									if (justFinishedTrack.youtube && c.youtube && justFinishedTrack.youtube.ytid == c.youtube.ytid)
+									{
+										isPresent = true;
+									}
+									else if (justFinishedTrack.soundcloud && c.soundcloud && justFinishedTrack.soundcloud.scid == c.soundcloud.scid)
+									{
+										isPresent = true;
+									}
+								});
+
+							if (!isPresent)
+							{
+								history.push(justFinishedTrack);
+							}
+						});
+
+						justFinishedTrack.remove();
+						track.set(null);					
+					});
+
 			}
-    	},1000)
+    	}
+    	,1000);
 
     	$('#skipit').click(function(){
     		skipTrack(track, queue);
     	});
+
+    	$('<a/>').attr('href', '#').click( function(){
+    		// remove item
+			queue.child(uniqueID).remove();
+
+    	}).text('Remove').appendTo($('.queuedItem .submittedby'));
 
 
     	coord.onDisconnect().set(null);
@@ -485,15 +523,6 @@
 	    
 	    $('<div/>').addClass('author').text(track.author).appendTo(itemTextContainer);
 	    var submit = $('<div/>').addClass('submittedby').text('submitted by '+track.submittedby+' ').appendTo(itemTextContainer);
-
-	    if (isCoordinator)
-	    {
-	    	$('<a/>').attr('href', '#').click( function(){
-	    		// remove item
-    			queue.child(uniqueID).remove();
-
-	    	}).text('Remove').appendTo(submit);
-	    }
 
 	    trackQueue[uniqueID].appendTo($('#tracksDiv'));
 	    trackQueue[uniqueID].show(500);
