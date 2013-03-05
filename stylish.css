@@ -46,6 +46,20 @@ h3
 	border-bottom: 1px solid #eee;
 }
 
+#footer
+{
+	font-size: 0.8em;
+	text-align: center;
+	color: #ccc;
+}
+
+#footer a
+{
+	font-weight: normal;
+	text-decoration: underline;
+	color: inherit;
+}
+
 #container
 {
 	background-color: #fafafa;
