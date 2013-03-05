@@ -305,7 +305,7 @@
 
     function loadYoutube( ytid, start )
     {
-    	var html = '<object width="100%"><param name="movie" value="http://www.youtube.com/v/'+ytid+'&iv_load_policy=3&autoplay=1&showinfo=0&volume=100&start='+start+'"></param><param name="allowscriptaccess" value="always"></param><param name="volume" value="100"></param><param name="wmode" value="transparent"></param></param><embed src="http://www.youtube.com/v/'+ytid+'&iv_load_policy=3&autoplay=1&showinfo=0&volume=100&start='+start+'" type="application/x-shockwave-flash" allowscriptaccess="always" wmode="transparent" volume="100"></embed></object>'
+    	var html = '<object width="300px" height="200px"><param name="movie" value="http://www.youtube.com/v/'+ytid+'&iv_load_policy=3&autoplay=1&showinfo=0&volume=100&start='+start+'"></param><param name="allowscriptaccess" value="always"></param><param name="volume" value="100"></param><param name="wmode" value="transparent"></param></param><embed src="http://www.youtube.com/v/'+ytid+'&iv_load_policy=3&autoplay=1&showinfo=0&volume=100&start='+start+'" type="application/x-shockwave-flash" allowscriptaccess="always" wmode="transparent" volume="100" width="300px" height="220px"></embed></object>'
     	$('#playerDiv').html(html);
 
     	isPlaying = true;
