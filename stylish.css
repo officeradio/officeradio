@@ -125,6 +125,11 @@ h3
 	height: 95%;
 }
 
+#queueContainer
+{
+	height: 54%;
+}
+
 .scroll {
    overflow-y:auto;
    overflow-x: hidden;
