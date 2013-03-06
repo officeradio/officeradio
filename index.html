@@ -121,17 +121,27 @@
     rooms.on('child_added', function(snapshot) {
         var room = snapshot.name();
 
-    	var div = $('<div/>').addClass('room');
+        new Firebase(snapshot.ref().toString()+'/users/').once('value', function(u)
+        	{
+    			var div = $('<div/>').addClass('room');
 
-    	$('<a/>').attr("href", "#").text(room).click(function(){
-    		var name = $('#nameInput').val();
-    		validateThenJoin(room, name);
-    	}).appendTo(div);
+				$('<a/>').attr("href", "#").text(room).click(function(){
+					var name = $('#nameInput').val();
+					validateThenJoin(room, name);
+				}).appendTo(div);
 
-    	div.appendTo( $('#roomsDiv') );
+				var s = (u.numChildren() != 1)?'s':'';
+
+				$('<span/>').text('('+u.numChildren()+' User'+s+')').appendTo(div);
+
+				div.appendTo( $('#roomsDiv') );
 
 
-		roomList[room] = div;
+				roomList[room] = div;
+
+        	});
+
+    	
     });
 
     rooms.on('child_removed', function(snapshot) {
