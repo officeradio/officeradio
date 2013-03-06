@@ -3,6 +3,7 @@
     <script src='https://cdn.firebase.com/v0/firebase.js'></script>
     <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js'></script>
     <script src='https://connect.soundcloud.com/sdk.js'></script>
+    <script src='sha1.js'></script>
     <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,800' rel='stylesheet' type='text/css' />
     <link href="noise.css" rel="stylesheet" type="text/css" />
     <link href="stylish.css" rel="stylesheet" type="text/css" />
@@ -30,7 +31,7 @@
 	  		<div id='roomHeader'>
 	  			<div><h2 id='roomName'>Room Name</h1></div>
 	  			<span id='nowPlaying'>Now Playing</span>
-	  			<div id='passwordBox'><input type='text' id='passwordInput' placeholder='Password'></div>
+	  			<div id='passwordBox'><input type='text' id='passwordInput' placeholder='Password'><input type='hidden' id='passwordSalt'></div>
 	  		</div>
 	  		<div id='container3'>
 	  		<div id='container2'>
@@ -175,7 +176,52 @@
     	{
     		alert(' you need to choose your name!');
     	}
-    	else joinRoom( room, name );
+    	else
+		{
+			var password = new Firebase('https://officeradio.firebaseio.com/'+room+'/password/');
+
+			password.once('value', function(p)
+			{
+				var passwd = p.val();
+
+				if (passwd)
+				{
+					var userEntry = prompt('Please enter the password for '+room,'');
+
+					var hash = encryptPassword(userEntry, passwd.salt);
+
+					if (hash == passwd.hash)
+					{
+						joinRoom( room, name );
+					}
+					else
+					{
+						alert('Wrong password!');
+					}
+				}
+				else
+				{
+					joinRoom( room, name );
+				}
+			})
+			
+		}
+    }
+
+    function encryptPassword( password, salt )
+    {
+    	var hash = password;
+
+    	var iterations = 10;
+
+    	for (var i=0; i<iterations; i++)
+    	{
+    		var toHash = (i%2==0)? salt + hash : password + hash;
+
+    		hash = Sha1.hash(toHash);
+    	}
+
+    	return hash;
     }
 
     function joinRoom( room, name )
@@ -193,6 +239,7 @@
     	var coord = new Firebase('https://officeradio.firebaseio.com/'+room+'/coordinator/');
     	var play = new Firebase('https://officeradio.firebaseio.com/'+room+'/play/');
     	var history = new Firebase('https://officeradio.firebaseio.com/'+room+'/history/');
+    	var password = new Firebase('https://officeradio.firebaseio.com/'+room+'/password/');
 
     	$('#roomName').text(room);
 
@@ -207,7 +254,7 @@
 			{
 				if (snapshot.val() == user.toString())
 				{
-					setupCoordinator( user, coord, play, track, history, queue );
+					setupCoordinator( user, coord, play, track, history, queue, password );
 				}
 				else
 				{
@@ -225,6 +272,8 @@
 			}
 			
 		});
+
+		password.child('salt').on('value', function(s){$('#passwordSalt').val(s.val());});
 
     	setupChat( chat, name );
     	setupUsers( users );
@@ -333,7 +382,7 @@
     	if (isCoordinator) currentCoordDuration = start;
     }
 
-    function setupCoordinator( user, coord, play, track, history, queue )
+    function setupCoordinator( user, coord, play, track, history, queue, password )
     {
     	// when I'm quitting, stop me being coordinator
     	isCoordinator = true;
@@ -383,6 +432,24 @@
     	$('#skipit').click(function(){
     		skipTrack(track, queue);
     	});
+
+    	$('#passwordInput').keypress(function (e) {
+	        if (e.keyCode == 13) {
+	        	var saltIn = $('#passwordSalt').val();
+
+        		if (saltIn == '')
+        		{
+        			saltIn = Sha1.salt(16);
+        		}
+
+	        	var passwd = $('#passwordInput').val();
+	          	var hashOut = encryptPassword( passwd, saltIn );
+
+	          	password.set({salt : saltIn, hash : hashOut});
+	        }
+	    });
+
+	    $('#passwordBox').show();
 
     	$('<a/>').attr('href', '#').click( function(){
     		// remove item
