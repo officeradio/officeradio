@@ -27,6 +27,11 @@
 	  		<input type='button' id='roomGo' value='Go!'>
 	  	</div>
 	  	<div id='clientDiv'>
+	  		<div id='roomHeader'>
+	  			<div><h2 id='roomName'>Room Name</h1></div>
+	  			<span id='nowPlaying'>Now Playing</span>
+	  			<div id='passwordBox'><input type='text' id='passwordInput' placeholder='Password'></div>
+	  		</div>
 	  		<div id='container3'>
 	  		<div id='container2'>
 	  		<div id='container1'>
@@ -107,6 +112,7 @@
 
     $('#header h2').text(phrases[Math.floor((Math.random()*phrases.length))]);
     $('#skipit').hide();
+    $('#passwordBox').hide();
 
     var roomList = {};
 
@@ -178,6 +184,8 @@
     	var play = new Firebase('https://officeradio.firebaseio.com/'+room+'/play/');
     	var history = new Firebase('https://officeradio.firebaseio.com/'+room+'/history/');
 
+    	$('#roomName').text(room);
+
     	var user = users.push({name: name});
 
     	var coordUpdate = coord.on('value', function(snapshot) {
@@ -247,6 +255,7 @@
 				{
 					$('#skipit').show(1000);
 				}
+				$('#nowPlaying').text('Now Playing: '+trackData.title);
 			}
 			else
 			{
@@ -259,6 +268,7 @@
 					    track.set(snapshot.ref().toString());
 					  });
 				}
+				$('#nowPlaying').text('');
 			}
 		});
 

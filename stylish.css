@@ -160,6 +160,41 @@ h3
 	border: 1px solid #eee;
 }
 
+#roomHeader
+{
+	padding-left: 10px;
+	padding-right: 10px;
+	background-color: #eee;
+	height: 40px;
+}
+
+#roomName
+{
+	float: left;
+	font-weight: bold;
+	text-transform: uppercase;
+	margin: 0;
+	padding-right: 30px;
+}
+
+#nowPlaying
+{
+	float: left;
+	position: relative;
+	top: 50%;
+	height: 100%;
+	margin-top: -12;
+}
+
+#passwordBox
+{
+	float: right;
+	position: relative;
+	top: 50%;
+	height: 100%;
+	margin-top: -14;
+}
+
 a
 {
 	font-weight: bold;
