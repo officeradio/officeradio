@@ -65,6 +65,18 @@
 		</div>
 	</div>
     
+    <div id='passwordOverlay'>
+    <div id='whitebox'></div>
+    <div id='passwordDialog'>
+    	<div id='passwdHeader'><h2>This room needs a password</h2></div>
+    	<div id='passwdBody'>
+    		<span>Please enter the room password below. <br /></span>
+    		<input type='password' id='passwdInput' placeholder='Password' />
+    		<input type='submit' id='passwdGo' value='Go' />
+    		<input type='submit' id='passwdCancel' value='Cancel' />
+    	</div>
+	</div>
+	</div>
 
     <script>
 
@@ -73,6 +85,8 @@
     {
     	$('#nameInput').val(localStorage.getItem("name"));
     }
+
+    $('#passwordOverlay').hide();
 
 	$('#clientDiv').hide();
     $('#roomInput').keypress(function (e) {
@@ -96,6 +110,8 @@
 
     var soundcloudClientID = '3489a2aa1dae8b123748017854c09602';
 
+    var firebaseRoomPrefix = 'https://officeradio.firebaseio.com/room/';
+
     SC.initialize({
 	  client_id: soundcloudClientID
 	});
@@ -117,7 +133,7 @@
 
     var roomList = {};
 
-    var rooms = new Firebase('https://officeradio.firebaseio.com/');
+    var rooms = new Firebase(firebaseRoomPrefix);
 
     rooms.on('child_added', function(snapshot) {
         var room = snapshot.name();
@@ -178,7 +194,7 @@
     	}
     	else
 		{
-			var password = new Firebase('https://officeradio.firebaseio.com/'+room+'/password/');
+			var password = new Firebase(firebaseRoomPrefix+room+'/password/');
 
 			password.once('value', function(p)
 			{
@@ -186,18 +202,37 @@
 
 				if (passwd)
 				{
-					var userEntry = prompt('Please enter the password for '+room,'');
+					$('#passwdCancel').click( 
+						function()
+						{
+							$('#passwordOverlay').hide();
+						}
+						);
 
-					var hash = encryptPassword(userEntry, passwd.salt);
+					$('#passwdGo').click( 
+						function()
+						{
+							var userEntry = $('#passwdInput').val();
 
-					if (hash == passwd.hash)
-					{
-						joinRoom( room, name );
-					}
-					else
-					{
-						alert('Wrong password!');
-					}
+							var hash = encryptPassword(userEntry, passwd.salt);
+
+							if (hash == passwd.hash)
+							{
+								joinRoom( room, name );
+								$('#passwordOverlay').hide();
+							}
+							else
+							{
+								alert('Wrong password!');
+							}
+						}
+						);
+
+					$('#passwordOverlay').show();
+
+
+
+					
 				}
 				else
 				{
@@ -226,20 +261,21 @@
 
     function joinRoom( room, name )
     {
+
     	if (localStorage)
     	{
     		localStorage.setItem("name", name);
     	}
     	$('#roomDiv').hide(1000);
     	$('#clientDiv').show(1000);
-    	var users = new Firebase('https://officeradio.firebaseio.com/'+room+'/users/');
-    	var chat =  new Firebase('https://officeradio.firebaseio.com/'+room+'/chat/');
-    	var queue = new Firebase('https://officeradio.firebaseio.com/'+room+'/queue/');
-    	var track = new Firebase('https://officeradio.firebaseio.com/'+room+'/track/');
-    	var coord = new Firebase('https://officeradio.firebaseio.com/'+room+'/coordinator/');
-    	var play = new Firebase('https://officeradio.firebaseio.com/'+room+'/play/');
-    	var history = new Firebase('https://officeradio.firebaseio.com/'+room+'/history/');
-    	var password = new Firebase('https://officeradio.firebaseio.com/'+room+'/password/');
+    	var users = new Firebase(firebaseRoomPrefix+room+'/users/');
+    	var chat =  new Firebase(firebaseRoomPrefix+room+'/chat/');
+    	var queue = new Firebase(firebaseRoomPrefix+room+'/queue/');
+    	var track = new Firebase(firebaseRoomPrefix+room+'/track/');
+    	var coord = new Firebase(firebaseRoomPrefix+room+'/coordinator/');
+    	var play = new Firebase(firebaseRoomPrefix+room+'/play/');
+    	var history = new Firebase(firebaseRoomPrefix+room+'/history/');
+    	var password = new Firebase(firebaseRoomPrefix+room+'/password/');
 
     	$('#roomName').text(room);
 
