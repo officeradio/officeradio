@@ -124,7 +124,9 @@
     	"Random phrases is so last year", 
     	"Searching YouTube at work since 2013", 
     	"Obligatory 212 required",
-    	"Not responsible for varying audio levels"  
+    	"Not responsible for varying audio levels",
+    	"Before this, my life was acapella",
+    	"Party rock is in your house tonight"
     ];
 
     $('#header h2').text(phrases[Math.floor((Math.random()*phrases.length))]);
@@ -367,12 +369,53 @@
 			}
 		});
 
-		window.onbeforeunload = function() {
-			coord.off('value', coordUpdate);
-			if (isCoordinator) coord.set(null);
-		    user.remove();
-		    chat.push({name: name, leave : true});
+		var tick = setInterval(
+    	function(){
+			if (isPlaying && isCoordinator)
+			{
+				currentCoordDuration++;
+				play.set( currentCoordDuration );
 
+				if (currentCoordDuration >= currentTrackDuration && currentTrack != null)
+					new Firebase(currentTrack).once('value', function(v)
+					{
+						var justFinishedTrack = v.val();
+						history.once('value', function(h)
+						{
+							var isPresent = false;
+
+							h.forEach(
+								function(child){
+									var c = child.val();
+									if (justFinishedTrack.youtube && c.youtube && justFinishedTrack.youtube.ytid == c.youtube.ytid)
+									{
+										isPresent = true;
+									}
+									else if (justFinishedTrack.soundcloud && c.soundcloud && justFinishedTrack.soundcloud.scid == c.soundcloud.scid)
+									{
+										isPresent = true;
+									}
+								});
+
+							if (!isPresent)
+							{
+								history.push(justFinishedTrack);
+							}
+						});
+
+						v.ref().remove();
+						track.set(null);					
+					});
+
+			}
+    	}
+    	,1000);
+
+    	// disconnect setup
+    	user.onDisconnect().remove();
+
+		window.onbeforeunload = function() {
+		    chat.push({name: name, leave : true});
 		}
     	
     }
@@ -420,50 +463,7 @@
 
     function setupCoordinator( user, coord, play, track, history, queue, password )
     {
-    	// when I'm quitting, stop me being coordinator
     	isCoordinator = true;
-
-    	var tick = setInterval(
-    	function(){
-			if (isPlaying && isCoordinator)
-			{
-				currentCoordDuration++;
-				play.set( currentCoordDuration );
-
-				if (currentCoordDuration >= currentTrackDuration && currentTrack != null)
-					new Firebase(currentTrack).once('value', function(v)
-					{
-						var justFinishedTrack = v.val();
-						history.once('value', function(h)
-						{
-							var isPresent = false;
-
-							h.forEach(
-								function(child){
-									var c = child.val();
-									if (justFinishedTrack.youtube && c.youtube && justFinishedTrack.youtube.ytid == c.youtube.ytid)
-									{
-										isPresent = true;
-									}
-									else if (justFinishedTrack.soundcloud && c.soundcloud && justFinishedTrack.soundcloud.scid == c.soundcloud.scid)
-									{
-										isPresent = true;
-									}
-								});
-
-							if (!isPresent)
-							{
-								history.push(justFinishedTrack);
-							}
-						});
-
-						v.ref().remove();
-						track.set(null);					
-					});
-
-			}
-    	}
-    	,1000);
 
     	$('#skipit').click(function(){
     		skipTrack(track, queue);
@@ -493,9 +493,9 @@
 
     	}).text('Remove').appendTo($('.queuedItem .submittedby'));
 
+    	currentCoordDuration = currentPlayTime;
 
     	coord.onDisconnect().set(null);
-
     }
 
     function ytGetID( url )
