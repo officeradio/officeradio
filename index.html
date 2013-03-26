@@ -709,6 +709,15 @@
 	    $('<div/>').addClass('author').text(track.author).appendTo(itemTextContainer);
 	    var submit = $('<div/>').addClass('submittedby').text('submitted by '+track.submittedby+' ').appendTo(itemTextContainer);
 
+	    if (isCoordinator)
+	    {
+		    $('<a/>').attr('href', '#').click( function(){
+	    		// remove item
+				queue.child(uniqueID).remove();
+
+	    	}).text('Remove').appendTo( submit );
+		}
+
 	    trackQueue[uniqueID].appendTo($('#tracksDiv'));
 	    trackQueue[uniqueID].show(500);
 
