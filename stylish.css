@@ -217,6 +217,17 @@ a
 	font-weight: bold;
 }
 
+.msg span.tag
+{
+	font-weight: normal;
+	border: 1px solid #ada;
+	background-color: #dfd;
+	padding-left: 6px;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
+	padding-right: 2px;
+}
+
 .msg:nth-child(even) {
     background-color: #efefef;
 }

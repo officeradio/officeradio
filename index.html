@@ -111,6 +111,8 @@
     var soundcloudClientID = '3489a2aa1dae8b123748017854c09602';
 
     var firebaseRoomPrefix = 'https://officeradio.firebaseio.com/room/';
+    var firebaseTagPrefix = 'https://officeradio.firebaseio.com/tags/';
+    var firebaseTracksPrefix = 'https://officeradio.firebaseio.com/tracks/';
 
     SC.initialize({
 	  client_id: soundcloudClientID
@@ -134,6 +136,8 @@
     $('#passwordBox').hide();
 
     var roomList = {};
+
+    var tracks = new Firebase(firebaseTracksPrefix);
 
     var rooms = new Firebase(firebaseRoomPrefix);
 
@@ -278,6 +282,7 @@
     	var play = new Firebase(firebaseRoomPrefix+room+'/play/');
     	var history = new Firebase(firebaseRoomPrefix+room+'/history/');
     	var password = new Firebase(firebaseRoomPrefix+room+'/password/');
+    	var tags = new Firebase(firebaseTagPrefix);
 
     	$('#roomName').text(room);
 
@@ -313,46 +318,50 @@
 
 		password.child('salt').on('value', function(s){$('#passwordSalt').val(s.val());});
 
-    	setupChat( chat, name );
+    	setupChat( chat, name, tags, track );
     	setupUsers( users );
-    	setupQueueMaintenance( queue );
+    	setupQueueMaintenance( tracks, queue );
     	setupNecromancer( queue, history );
 
     	myUser = name;
 
 		chat.push({name: name, join : true});
 		
-
 		var playUpdate = play.on('value', function(snapshot){
 			currentPlayTime = snapshot.val();
 		})
 
 		track.on('value', function(snapshot) {
+
 			currentTrack = snapshot.val();
 
 			if (currentTrack != null)
 			{
 				// play here
-				var trackData;
-				new Firebase(snapshot.val()).once('value', function(v){ trackData = v.val(); });
+				new Firebase(currentTrack).once('value', 
+					function(v){ 
+						var trackData = v.val();
+						var playStart = currentPlayTime;
 
-				var playStart = currentPlayTime;
+						currentTrackDuration = trackData.duration;
 
-				currentTrackDuration = trackData.duration;
+						if (trackData.youtube)
+						{
+							loadYoutube( trackData.youtube.ytid, playStart );
+						}
+						else if (trackData.soundcloud)
+						{
+							loadSoundcloud( trackData.url, playStart );
+						}
+						if (isCoordinator)
+						{
+							$('#skipit').show(1000);
+							chat.push({nowplaying:trackData.title});
+						}
+						$('#nowPlaying').text('Now Playing: '+trackData.title); 
+					});
 
-				if (trackData.youtube)
-				{
-					loadYoutube( trackData.youtube.ytid, playStart );
-				}
-				else if (trackData.soundcloud)
-				{
-					loadSoundcloud( trackData.url, playStart );
-				}
-				if (isCoordinator)
-				{
-					$('#skipit').show(1000);
-				}
-				$('#nowPlaying').text('Now Playing: '+trackData.title);
+				
 			}
 			else
 			{
@@ -362,7 +371,9 @@
 					
 					queue.startAt().limit(1).once("child_added", function(snapshot) {
 						play.set(0);
-					    track.set(snapshot.ref().toString());
+
+					    track.set(snapshot.val());
+					    
 					  });
 				}
 				$('#nowPlaying').text('');
@@ -377,7 +388,7 @@
 				play.set( currentCoordDuration );
 
 				if (currentCoordDuration >= currentTrackDuration && currentTrack != null)
-					new Firebase(currentTrack).once('value', function(v)
+					track.once('value', function(v)
 					{
 						var justFinishedTrack = v.val();
 						history.once('value', function(h)
@@ -387,11 +398,7 @@
 							h.forEach(
 								function(child){
 									var c = child.val();
-									if (justFinishedTrack.youtube && c.youtube && justFinishedTrack.youtube.ytid == c.youtube.ytid)
-									{
-										isPresent = true;
-									}
-									else if (justFinishedTrack.soundcloud && c.soundcloud && justFinishedTrack.soundcloud.scid == c.soundcloud.scid)
+									if (c == justFinishedTrack)
 									{
 										isPresent = true;
 									}
@@ -403,7 +410,11 @@
 							}
 						});
 
-						v.ref().remove();
+						queue.startAt().limit(1).once("child_added", function(snapshot) {
+							snapshot.ref().remove();
+						}
+						);
+
 						track.set(null);					
 					});
 
@@ -509,7 +520,7 @@
 		return video_id;
     }
 
-    function ytPushTrack( ytUrl, queue )
+    function ytPushTrack( ytUrl, tracks, queue )
     {
     	var video_id = ytGetID( ytUrl );
 
@@ -534,13 +545,13 @@
 			    		}
 			    	};
 
-			    	queue.push(ytData);
+			    	addTrackAndQueue( tracks, queue, ytData );
 			    }
 		    });
 		
     }
 
-    function scPushTrack( scUrl, queue )
+    function scPushTrack( scUrl, tracks, queue )
     {
     	$.getJSON('http://api.soundcloud.com/resolve.json?url='+scUrl+'&client_id='+soundcloudClientID, function(data,status,xhr){
     	   		var scData =  {
@@ -556,8 +567,40 @@
 		    		}
 		    	};
 
-		    	queue.push(scData);
+		    	addTrackAndQueue( tracks, queue, scData );
 		    });
+    }
+
+    function addTrackAndQueue( tracks, queue, trackItem )
+    {
+    	tracks.once('value', function(h)
+		{
+			var isPresent = false;
+
+			var trackRef = null;
+
+			h.forEach(
+				function(child){
+					var c = child.val();
+					if (trackItem.youtube && c.youtube && trackItem.youtube.ytid == c.youtube.ytid)
+					{
+						isPresent = true;
+						trackRef = child.ref();
+					}
+					else if (trackItem.soundcloud && c.soundcloud && trackItem.soundcloud.scid == c.soundcloud.scid)
+					{
+						isPresent = true;
+						trackRef = child.ref();
+					}
+				});
+
+			if (!isPresent)
+			{
+				trackRef = tracks.push(trackItem);
+			}
+
+			queue.push( trackRef.toString() );
+		});
     }
 
     function setupNecromancer( queue, history )
@@ -592,7 +635,7 @@
 
     }
 
-    function setupQueueMaintenance( queue )
+    function setupQueueMaintenance( tracks, queue )
     {
 
     	$('#trackInput').keypress(function (e) {
@@ -601,11 +644,11 @@
 
 			if(text.indexOf("youtube") !== -1)
 			{
-				ytPushTrack( text, queue );
+				ytPushTrack( text, tracks, queue );
 			}
 			else if(text.indexOf("soundcloud") !== -1)
 			{
-				scPushTrack( text, queue );
+				scPushTrack( text, tracks, queue );
 			}
 			else
 			{
@@ -619,13 +662,18 @@
 	      });
 
     	queue.on('child_added', function(snapshot) {
-	        var track = snapshot.val();
+	        var trackRef = new Firebase(snapshot.val());
 	        var uniqueID = snapshot.ref().name();
 
         	/*trackQueue[uniqueID] = $('<div/>').addClass('track').text(track.url);
 
     		trackQueue[uniqueID].appendTo($('#tracksDiv'));*/
-    		addQueueItem(track, uniqueID, queue);
+
+    		trackRef.once('value', function(track)
+    		{
+				addQueueItem(track.val(), uniqueID, queue);
+    		});
+    		
 	    });
 
 	    queue.on('child_removed', function(snapshot) {
@@ -651,7 +699,7 @@
 
     function addQueueItem(track, uniqueID, queue)
     {
-    	trackQueue[uniqueID] = $('<div/>').addClass('queuedItem').hide();
+		trackQueue[uniqueID] = $('<div/>').addClass('queuedItem').hide();
 	    $('<img/>').addClass('thumb').attr('src', track.thumb).appendTo(trackQueue[uniqueID]);
 
 	    var itemTextContainer = $('<div/>').addClass('itemText').appendTo(trackQueue[uniqueID]);
@@ -689,16 +737,16 @@
 
     }
 
-    function setupChat( chat, name )
+    function setupChat( chat, name, tags, track )
     {
 	 	$('#messageInput').keypress(function (e) {
 	        if (e.keyCode == 13) {
-	          validateAndSendMessage(chat, name);
+	          validateAndSendMessage(chat, name, tags, track);
 	        }
 	      });
 
 	 	$('#messageGo').click(function (e) {
-	        validateAndSendMessage(chat, name);
+	        validateAndSendMessage(chat, name, tags, track);
 	      });
 
 	      chat.endAt().limit(1).on('child_added', function(snapshot) {
@@ -711,17 +759,24 @@
 			{
 				displayChatMessage(message.name, 'leaves', 'leave msg');
 			}
+			else if (message.nowplaying)
+			{
+				displayChatMessage('Now Playing', message.nowplaying, 'nowplaying msg');
+			}
 			else 
 			{
-				displayChatMessage(message.name, message.text, 'msg');
+				var taggedMessage = message.text.replace(/#[\w\-_]*/g, "<span class='tag'>$&</span>")
+				displayChatMessage(message.name, taggedMessage, 'msg');
 			}
 	      });
-	      
     }
 
-    function validateAndSendMessage(chat, name)
+    function validateAndSendMessage(chat, name, tags, track)
     {
     	var text = $('#messageInput').val();
+
+		extractTags( tags, track, text );
+
     	if (text != '')
     	{
 	        chat.push({name: name, text: text});
@@ -729,28 +784,50 @@
 	    }
     }
 
+    var tagRegex = /#[\w\-_]*/g;
+
+    function extractTags( tags, track, text )
+    {
+    	var tagMatches = text.match(tagRegex);
+
+    	for ( match in tagMatches )
+    	{
+    		addTagIfNotExists(tagMatches[match].substring(1), track);
+    	}
+    }
+
+    function addTagIfNotExists( tag, track )
+    {
+    	track.once('value', function(t)
+    	{
+    		currentTrack = t.val();
+    		var tagRef = new Firebase( firebaseTagPrefix+tag );
+	    	tagRef.once('value', function(t)
+			{
+				var isPresent = false;
+
+				t.forEach(
+					function(child){
+						var c = child.val();
+						if (c == currentTrack)
+						{
+							isPresent = true;
+						}
+					});
+
+				if (!isPresent)
+				{
+					tagRef.push(currentTrack)
+				}
+			});
+    	});
+    }
+
     function displayChatMessage(name, text, cssClass) {
     	var messageDiv = $('#messagesDiv')[0];
-        $('<div/>').addClass(cssClass).text(text).prepend($('<span/>').text(name+' ')).appendTo(messageDiv);
+        $('<div/>').addClass(cssClass).html(text).prepend($('<span/>').text(name+' ')).appendTo(messageDiv);
         $('#messageContainer').animate({scrollTop:$('#messageContainer')[0].scrollHeight},'slow');
 	}
-      /*var myDataRef = new Firebase('https://rj8mzygh5ob.firebaseio-demo.com/');
-      $('#messageInput').keypress(function (e) {
-        if (e.keyCode == 13) {
-          var name = $('#nameInput').val();
-          var text = $('#messageInput').val();
-          myDataRef.push({name: name, text: text});
-          $('#messageInput').val('');
-        }
-      });
-      myDataRef.on('child_added', function(snapshot) {
-        var message = snapshot.val();
-		displayChatMessage(message.name, message.text);
-      });
-      function displayChatMessage(name, text) {
-        $('<div/>').text(text).prepend($('<em/>').text(name+': ')).appendTo($('#messagesDiv'));
-        $('#messagesDiv')[0].scrollTop = $('#messagesDiv')[0].scrollHeight;
-      };*/
     </script>
   </body>
 </html>
